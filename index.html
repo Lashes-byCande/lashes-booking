@@ -1068,22 +1068,36 @@ function renderSummary(){
   `;
 }
 
-function saveBooking(){
-  const bookings=loadData(STORE_KEYS.bookings,[]);
-  const id='bk_'+Date.now();
-  const rec={
-    id, status:'pending',
-    nombre:booking.nombre, apellido:booking.apellido, wa:booking.wa,
-    services:[...booking.services], modalidad:booking.modalidad,
-    date:formatDate(booking.date), time:booking.time,
-    contraAnswers:{...booking.contraAnswers}, firma:booking.firma,
-    multiDiscount:booking.services.length>=2,
-    createdAt:new Date().toISOString(),
+function saveBooking() {
+  const bookings = loadData(STORE_KEYS.bookings, []);
+  const bookingObj = {
+    id: Date.now(),
+    status: 'pending',
+    ...booking,
+    createdAt: new Date().toISOString()
   };
-  bookings.push(rec);
+  bookings.push(bookingObj);
   saveData(STORE_KEYS.bookings, bookings);
-  // Update client
-  updateClient(rec);
+
+  // ENVIAR EMAIL
+  const dur = getDuration(bookingObj.services);
+  const serviceNames = bookingObj.services
+    .map(id => SERVICES.find(s => s.id === id)?.name)
+    .join(', ');
+
+  fetch('https://formspree.io/f/TU_FORM_ID', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: bookingObj.nombre + ' ' + bookingObj.apellido,
+      whatsapp: bookingObj.wa,
+      services: serviceNames,
+      date: formatDateDisplay(new Date(bookingObj.date)),
+      time: bookingObj.time,
+      modalidad: bookingObj.modalidad,
+      duration: `${dur.min}-${dur.max} min`
+    })
+  });
 }
 
 function updateClient(rec){
