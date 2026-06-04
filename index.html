@@ -1082,8 +1082,70 @@ function saveBooking(){
   };
   bookings.push(rec);
   saveData(STORE_KEYS.bookings, bookings);
-  // Update client
   updateClient(rec);
+  sendEmailNotification(rec);
+}
+
+async function sendEmailNotification(rec){
+  const d = getDuration(rec.services);
+  const names = rec.services.map(id=>SERVICES.find(x=>x.id===id)?.name||id).join(', ');
+  const allQ = [...[
+    'lash_1|¿Tenés infecciones activas? (Conjuntivitis, orzuelos, blefaritis, etc.)',
+    'lash_2|¿Tuviste cirugías recientes?',
+    'lash_3|¿Tenés dermatitis, eccema o psoriasis activa en los párpados?',
+    'lash_4|¿Tenés síndrome de ojo seco severo o lagrimeo constante?',
+    'brow_1|¿Tenés heridas abiertas, quemaduras solares recientes o acné quístico severo en la zona?',
+    'brow_2|¿Utilizás actualmente retinol, ácidos o tratamientos para el acné?',
+    'brow_3|¿Te realizaste microblading o micropigmentación recientemente?',
+    'brow_4|¿Estás en el primer trimestre de embarazo o en período de lactancia?',
+  ]].reduce((acc,q)=>{const[id,text]=q.split("|");acc[id]=text;return acc;},{});
+  const contraText = Object.entries(rec.contraAnswers)
+    .map(([id,val])=>)
+    .join('
+');
+
+  const body = [
+    '🌸 NUEVA RESERVA - Lashes by Cande',
+    '',
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    rec.multiDiscount ? 'Descuento: 10% OFF por múltiples servicios' : '',
+    '',
+    '--- FORMULARIO DE SALUD ---',
+    contraText,
+    '',
+    ,
+    ,
+  ].filter(l=>l!==undefined).join('
+');
+
+  try {
+    await fetch('https://formspree.io/f/xvznowrk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: ,
+        message: body,
+        nombre: rec.nombre + ' ' + rec.apellido,
+        whatsapp: rec.wa,
+        servicios: names,
+        modalidad: rec.modalidad,
+        fecha: rec.date,
+        horario: rec.time + 'hs',
+        duracion: d.min + '–' + d.max + ' min',
+        descuento: rec.multiDiscount ? '10% OFF' : 'Sin descuento',
+        formulario_salud: contraText,
+        firma: rec.firma,
+      })
+    });
+  } catch(e) {
+    console.warn('No se pudo enviar el email:', e);
+  }
 }
 
 function updateClient(rec){
