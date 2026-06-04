@@ -1069,21 +1069,44 @@ function renderSummary(){
 }
 
 function saveBooking(){
-  const bookings=loadData(STORE_KEYS.bookings,[]);
-  const id='bk_'+Date.now();
-  const rec={
-    id, status:'pending',
-    nombre:booking.nombre, apellido:booking.apellido, wa:booking.wa,
-    services:[...booking.services], modalidad:booking.modalidad,
-    date:formatDate(booking.date), time:booking.time,
-    contraAnswers:{...booking.contraAnswers}, firma:booking.firma,
-    multiDiscount:booking.services.length>=2,
-    createdAt:new Date().toISOString(),
-  };
-  bookings.push(rec);
-  saveData(STORE_KEYS.bookings, bookings);
-  // Update client
-  updateClient(rec);
+ const bookings=loadData(STORE_KEYS.bookings,[]);
+ const id='bk_'+Date.now();
+ const rec={
+ id, status:'pending',
+ nombre:booking.nombre, apellido:booking.apellido, wa:booking.wa,
+ services:[...booking.services], modalidad:booking.modalidad,
+ date:formatDate(booking.date), time:booking.time,
+ contraAnswers:{...booking.contraAnswers}, firma:booking.firma,
+ multiDiscount:booking.services.length>=2,
+ createdAt:new Date().toISOString(),
+ };
+ bookings.push(rec);
+ saveData(STORE_KEYS.bookings, bookings);
+ // Update client
+ 
+ // ════════════ ENVIAR ALERTA POR EMAIL (FORMSPREE) ════════════
+ const nombresServicios = booking.services.map(id => SERVICES.find(x => x.id === id)?.name).join(', ');
+ 
+ fetch("https://formspree.io/f/xvznowrk", { // <--- REEMPLAZA AQUÍ TU URL DE FORMSPREE
+     method: "POST",
+     headers: { "Content-Type": "application/json", "Accept": "application/json" },
+     body: JSON.stringify({
+         "Nueva Reserva de": `${booking.nombre} ${booking.apellido}`,
+         "WhatsApp Contacto": booking.wa,
+         "Servicios Elegidos": nombresServicios,
+         "Modalidad": booking.modalidad === 'gabinete' ? 'Gabinete' : 'A domicilio',
+         "Fecha del Turno": formatDateDisplay(booking.date),
+         "Horario": `${booking.time} hs`,
+         "Firma Digital": booking.firma
+     })
+ })
+ .then(response => {
+     if (response.ok) {
+         showToast("Notificación enviada con éxito", "success");
+     }
+ })
+ .catch(error => console.error("Error al enviar email:", error));
+ // ═════════════════════════════════════════════════════════════
 }
 
 function updateClient(rec){
